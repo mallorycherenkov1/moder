@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Подсчет ЗПШКИ</title>
+    <title>Подсчет ЗП</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -35,11 +35,25 @@
             height: 300px;
             margin-top: 10px;
         }
+        .moderator-entry {
+            padding: 10px;
+            border: 1px solid #ccc;
+            background: #e9f7ef;
+            margin-bottom: 10px;
+        }
+        .warning {
+            color: red;
+            font-weight: bold;
+        }
+        .bonus {
+            color: green;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
 
-<h1>Новостной Сайт</h1>
+<h1>Новости по изменениям сайта</h1>
 <button id="menuButton">Меню</button>
 <button id="bgButton">Сменить цвет фона</button>
 <div id="menu">
@@ -55,8 +69,10 @@
     <div id="newsList"></div>
 </div>
 
+<h1>Подсчет зарплаты</h1>
+
 <div class="moderator" id="moderatorContainer">
-    <h2>Добавить Модераторов</h2>
+    <h2>Добавьте информацию из файла data.txt</h2>
     <textarea id="moderatorInput" placeholder="Вставьте текст с информацией о модераторах здесь..."></textarea>
     <button id="processModeratorsButton">Обработать модераторов</button>
     <div id="moderatorList"></div>
@@ -94,6 +110,7 @@
 
         const lines = inputText.split('\n');
         let moderatorEntries = [];
+        let maxActions = 0;
 
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i].trim();
@@ -147,21 +164,55 @@
                         bonuses += Math.floor((reputation - 20) / 5) * 5 + 5; // Бонусы за репутацию
                     }
 
-                    moderatorEntries.push(`
-                        🚹 | ${nickname}<br>
-                        📔 | Вконтакте: ${vkLine.split(":")[1].trim()}<br>
-                        📋 | ${position}<br>
-                        💬 | Дискорд-айди: ${discordIdLine.split(":")[1].trim()}<br>
-                        🍀 | Действий (общее кол-во): ${actionsCount} (${actionsMatch[2]}%)<br>
-                        💎 | Жемчужины: ${pearls}<br>
-                        🎁 | Бонусы: ${bonuses}<br><br>
-                    `);
+                    // Проверка на максимальное количество действий
+                    if (actionsCount > maxActions) {
+                        maxActions = actionsCount;
+                    }
+
+                    moderatorEntries.push({
+                        nickname: nickname,
+                        vk: vkLine.split(":")[1].trim(),
+                        position: position,
+                        discordId: discordIdLine.split(":")[1].trim(),
+                        actionsCount: actionsCount,
+                        actionsMatch: actionsMatch[2],
+                        pearls: pearls,
+                        bonuses: bonuses,
+                        warning: false
+                    });
                 }
             }
         }
 
+        // Обработка вывода информации о модераторах
         moderatorEntries.forEach(entry => {
-            moderatorListDiv.innerHTML += entry;
+            let output = `<div class="moderator-entry">
+                🚹 | ${entry.nickname}<br>
+                📔 | Вконтакте: ${entry.vk}<br>
+                📋 | ${entry.position}<br>
+                💬 | Дискорд-айди: ${entry.discordId}<br>
+                🍀 | Действий (общее кол-во): ${entry.actionsCount} (${entry.actionsMatch})<br>
+                💎 | Жемчужины: ${entry.pearls}<br>
+                🎁 | Бонусы: ${entry.bonuses}<br>`;
+
+            // Проверка на невыполнение нормы
+            if ((entry.position === "Младший модератор" && entry.actionsCount < 15) ||
+                (entry.position === "Модератор" && entry.actionsCount < 12) ||
+                (entry.position === "Старший модератор" && entry.actionsCount < 10) ||
+                (entry.position === "Специальный модератор" && entry.actionsCount < 5)) {
+                entry.warning = true;
+                output += `<span class="warning">${entry.nickname} получает выговор - невыполнение еженедельной нормы.</span><br>`;
+            }
+
+            // Проверка на максимальное количество действий
+            if (entry.actionsCount === maxActions) {
+                entry.pearls += 30;
+                entry.bonuses += 30;
+                output += `<span class="bonus">${entry.nickname} получает дополнительно +30 бонусов и +30 жемчужин!</span><br>`;
+            }
+
+            output += `</div>`;
+            moderatorListDiv.innerHTML += output;
         });
     };
 
